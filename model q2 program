@@ -1,0 +1,86 @@
+import pandas as pd
+import os
+
+# Download dataset if not already present.
+# This part is now handled by the previous cell that created the file.
+# if not os.path.exists("candidate.csv"):
+#     # Corrected URL for the candidate.csv file
+#     !wget https://raw.githubusercontent.com/manisha-sahu/Candidate-Elimination-Algorithm/master/Candidate-Elimination-Algorithm/candidate.csv
+
+# Load dataset
+data = pd.read_csv("candidate.csv")
+
+# Split attributes and target
+attributes = list(data.columns[:-1])
+target = data.columns[-1]
+
+# Initialize S (specific boundary) & G (general boundary)
+S = ['ϕ'] * len(attributes)
+G = [['?'] * len(attributes)]
+
+def is_consistent(hypothesis, instance):
+    """Check whether hypothesis is consistent with instance"""
+    for i in range(len(hypothesis)): # Iterate by index
+        h = hypothesis[i]
+        x = instance.iloc[i] # Use .iloc for positional access
+        if h != '?' and h != x:
+            return False
+    return True
+
+# Candidate Elimination Algorithm
+for index, row in data.iterrows():
+    instance = row.iloc[:-1] # Use .iloc for positional access
+    label = row.iloc[-1]   # Use .iloc for positional access
+
+    if label == "Malignant":  # Positive example
+        # Update S
+        if S[0] == 'ϕ':  # First positive example
+            S = list(instance)
+        else:
+            for i in range(len(S)):
+                if S[i] != instance.iloc[i]: # Use .iloc for positional access
+                    S[i] = '?'
+
+        # Remove inconsistent hypotheses from G
+        G = [g for g in G if is_consistent(g, instance)]
+
+    else:  # Negative example
+        # Specialize G
+        new_G = []
+        for g in G:
+            if is_consistent(g, instance):
+                for i in range(len(g)):
+                    if g[i] == '?':
+                        if S[i] != instance.iloc[i]: # Use .iloc for positional access
+                            new_hypothesis = g.copy()
+                            new_hypothesis[i] = S[i]
+                            new_G.append(new_hypothesis)
+            else:
+                new_G.append(g)
+        G = new_G
+
+    print(f"\nTraining Example {index+1}: {list(instance)}, {label}")
+    print("S =", S)
+
+
+    # Before printing G, ensure there are no duplicate hypotheses
+    # and filter out any hypothesis that is too specific (e.g., if S has become more general)
+    final_G = []
+    for g_hyp in G:
+        is_duplicate = False
+        for fg_hyp in final_G:
+            if all(g_hyp[j] == fg_hyp[j] for j in range(len(g_hyp))):
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            final_G.append(g_hyp)
+    G = final_G
+
+
+    print("G =", G)
+
+print("\n============================")
+print("Final Specific Hypothesis S:")
+print(S)
+print("\nFinal General Hypotheses G:")
+print(G)
